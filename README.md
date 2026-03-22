@@ -1,7 +1,7 @@
 # Orpheus
 
 Katastroma's renderer. Implements the
-[keleustēs](https://github.com/katastroma/keleustes) gRPC service.
+[keleustēs](https://github.com/katastroma/keleustes) interface.
 
 Given source content, orpheus renders Kubernetes manifests using helm,
 kustomize, or raw YAML.
@@ -10,8 +10,8 @@ kustomize, or raw YAML.
 
 Orpheus renders source content into Kubernetes manifests. The output manifest
 order depends on the render backend. Note that none of them guarantee a
-consistent apply-safe order, and will largely vary depending on the nature of
-the source that is rendered:
+consistent apply-safe order and will largely vary depending on the nature of the
+source that is rendered:
 
 - **Helm** — `action.Install` (the SDK equivalent of `helm template`) outputs
   manifests sorted by Helm's hardcoded `InstallOrder` (namespaces before RBAC
@@ -29,12 +29,3 @@ Kubernetes API applies one resource at a time, manifest ordering is a separate
 concern handled by a dedicated ordering service before manifests reach the
 provisioner. Orpheus's job ends at producing the correct set of manifests — it
 makes no guarantees about their order.
-
-## Ecosystem
-
-- **[Phortizo](https://github.com/katastroma/phortizo)** — retriever, implements
-  [naukleros](https://github.com/katastroma/naukleros)
-- **Orpheus** (this) — renderer, implements
-  [keleustēs](https://github.com/katastroma/keleustes)
-- **[Histia](https://github.com/katastroma/histia)** — provisioner, implements
-  [katartismos](https://github.com/katastroma/katartismos)
