@@ -1,7 +1,7 @@
 # Orpheus
 
 Katastroma's renderer. Implements the
-[keleustēs](https://github.com/katastroma/keleustes) interface.
+[keleustēs](https://github.com/katastroma/keleustes) client API.
 
 Given source content, orpheus renders Kubernetes manifests using helm,
 kustomize, or raw YAML.
