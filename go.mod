@@ -4,7 +4,6 @@ go 1.26.1
 
 require (
 	git.sonicoriginal.software/grpc-foundation v0.1.2
-	github.com/go-git/go-billy/v5 v5.8.0
 	github.com/katastroma/diataxis v0.3.3
 	github.com/katastroma/keleustes v0.4.2
 	google.golang.org/grpc v1.79.3

@@ -4,15 +4,16 @@ package render
 import (
 	"fmt"
 	"slices"
-
-	"github.com/go-git/go-billy/v5"
 )
 
-// Func renders a filesystem into Kubernetes manifests.
-type Func func(billy.Filesystem) ([][]byte, error)
+// Files maps file paths to their contents.
+type Files map[string][]byte
 
-// MatchFunc reports whether the filesystem matches a rendering backend.
-type MatchFunc func(billy.Filesystem) bool
+// Func renders source files into Kubernetes manifests.
+type Func func(Files) ([][]byte, error)
+
+// MatchFunc reports whether the source files match a rendering backend.
+type MatchFunc func(Files) bool
 
 type entry struct {
 	name  string
@@ -32,14 +33,14 @@ func (r *Router) Register(name string, match MatchFunc, fn Func) {
 }
 
 // Render dispatches to the first backend whose match predicate returns true.
-func (r *Router) Render(fs billy.Filesystem) ([][]byte, error) {
+func (r *Router) Render(files Files) ([][]byte, error) {
 	idx := slices.IndexFunc(r.backends, func(e entry) bool {
-		return e.match(fs)
+		return e.match(files)
 	})
 
 	if idx < 0 {
 		return nil, fmt.Errorf("no matching renderer")
 	}
 
-	return r.backends[idx].fn(fs)
+	return r.backends[idx].fn(files)
 }

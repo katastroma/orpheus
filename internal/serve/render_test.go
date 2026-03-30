@@ -7,14 +7,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/go-git/go-billy/v5"
-
 	pb "github.com/katastroma/keleustes"
 
+	"github.com/katastroma/orpheus/internal/render"
 	"github.com/katastroma/orpheus/internal/tests"
 )
 
-func tarFromFiles(t *testing.T, files map[string]string) []byte {
+func tarFromFiles(t *testing.T, files render.Files) []byte {
 	t.Helper()
 
 	var buf bytes.Buffer
@@ -29,7 +28,7 @@ func tarFromFiles(t *testing.T, files map[string]string) []byte {
 			t.Fatalf("writing tar header for %s: %v", name, err)
 		}
 
-		if _, err := tw.Write([]byte(content)); err != nil {
+		if _, err := tw.Write(content); err != nil {
 			t.Fatalf("writing tar content for %s: %v", name, err)
 		}
 	}
@@ -41,11 +40,11 @@ func tarFromFiles(t *testing.T, files map[string]string) []byte {
 	return buf.Bytes()
 }
 
-func successRender(_ billy.Filesystem) ([][]byte, error) {
+func successRender(_ render.Files) ([][]byte, error) {
 	return [][]byte{[]byte("kind: Deployment")}, nil
 }
 
-func errorRender(_ billy.Filesystem) ([][]byte, error) {
+func errorRender(_ render.Files) ([][]byte, error) {
 	return nil, fmt.Errorf("render failed")
 }
 
@@ -58,7 +57,7 @@ func errorForward(_ context.Context, _ [][]byte) error {
 }
 
 func TestRender(t *testing.T) {
-	data := tarFromFiles(t, map[string]string{"app.yaml": "kind: Deployment"})
+	data := tarFromFiles(t, render.Files{"app.yaml": []byte("kind: Deployment")})
 
 	var forwarded [][]byte
 	captureFn := func(_ context.Context, manifests [][]byte) error {
@@ -98,7 +97,7 @@ func TestRender_ExtractError(t *testing.T) {
 }
 
 func TestRender_RenderError(t *testing.T) {
-	data := tarFromFiles(t, map[string]string{"app.yaml": "kind: Pod"})
+	data := tarFromFiles(t, render.Files{"app.yaml": []byte("kind: Pod")})
 
 	svc := New(errorRender, successForward)
 	stream := &tests.MockRenderServer{
@@ -112,7 +111,7 @@ func TestRender_RenderError(t *testing.T) {
 }
 
 func TestRender_ForwardError(t *testing.T) {
-	data := tarFromFiles(t, map[string]string{"app.yaml": "kind: Pod"})
+	data := tarFromFiles(t, render.Files{"app.yaml": []byte("kind: Pod")})
 
 	svc := New(successRender, errorForward)
 	stream := &tests.MockRenderServer{

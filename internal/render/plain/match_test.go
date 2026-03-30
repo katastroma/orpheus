@@ -3,11 +3,11 @@ package plain
 import (
 	"testing"
 
-	"github.com/go-git/go-billy/v5/memfs"
+	"github.com/katastroma/orpheus/internal/render"
 )
 
 func TestMatch(t *testing.T) {
-	if !Match(memfs.New()) {
+	if !Match(render.Files{}) {
 		t.Fatal("expected Match to return true")
 	}
 }
