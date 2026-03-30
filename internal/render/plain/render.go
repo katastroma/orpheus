@@ -2,18 +2,14 @@
 package plain
 
 import (
-	"bytes"
 	"path/filepath"
 
 	"github.com/katastroma/orpheus/internal/render"
 )
 
-const yamlSeparator = "---"
-
-// Render splits all YAML files into individual documents and returns each
-// as a separate manifest.
-func Render(files render.Files) ([][]byte, error) {
-	var manifests [][]byte
+// Render concatenates all YAML files into a single manifest blob.
+func Render(files render.Files) ([]byte, error) {
+	var out []byte
 
 	for path, content := range files {
 		ext := filepath.Ext(path)
@@ -21,13 +17,11 @@ func Render(files render.Files) ([][]byte, error) {
 			continue
 		}
 
-		for doc := range bytes.SplitSeq(content, []byte(yamlSeparator)) {
-			trimmed := bytes.TrimSpace(doc)
-			if len(trimmed) > 0 {
-				manifests = append(manifests, trimmed)
-			}
+		if len(out) > 0 {
+			out = append(out, []byte("\n---\n")...)
 		}
+		out = append(out, content...)
 	}
 
-	return manifests, nil
+	return out, nil
 }

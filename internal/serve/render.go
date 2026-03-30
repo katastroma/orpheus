@@ -17,12 +17,12 @@ func (s *Service) Render(stream pb.RendererService_RenderServer) error {
 		return fmt.Errorf("extracting source: %w", err)
 	}
 
-	manifests, err := s.renderFn(files)
+	manifest, err := s.renderFn(files)
 	if err != nil {
 		return fmt.Errorf("rendering: %w", err)
 	}
 
-	if err = s.streamFn(stream.Context(), manifests); err != nil {
+	if err = s.streamFn(stream.Context(), manifest); err != nil {
 		return fmt.Errorf("streaming to orderer: %w", err)
 	}
 

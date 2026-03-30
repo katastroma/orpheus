@@ -40,28 +40,28 @@ func tarFromFiles(t *testing.T, files render.Files) []byte {
 	return buf.Bytes()
 }
 
-func successRender(_ render.Files) ([][]byte, error) {
-	return [][]byte{[]byte("kind: Deployment")}, nil
+func successRender(_ render.Files) ([]byte, error) {
+	return []byte("kind: Deployment"), nil
 }
 
-func errorRender(_ render.Files) ([][]byte, error) {
+func errorRender(_ render.Files) ([]byte, error) {
 	return nil, fmt.Errorf("render failed")
 }
 
-func successForward(_ context.Context, _ [][]byte) error {
+func successForward(_ context.Context, _ []byte) error {
 	return nil
 }
 
-func errorForward(_ context.Context, _ [][]byte) error {
+func errorForward(_ context.Context, _ []byte) error {
 	return fmt.Errorf("forward failed")
 }
 
 func TestRender(t *testing.T) {
 	data := tarFromFiles(t, render.Files{"app.yaml": []byte("kind: Deployment")})
 
-	var forwarded [][]byte
-	captureFn := func(_ context.Context, manifests [][]byte) error {
-		forwarded = manifests
+	var forwarded []byte
+	captureFn := func(_ context.Context, manifest []byte) error {
+		forwarded = manifest
 		return nil
 	}
 
@@ -75,12 +75,8 @@ func TestRender(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(forwarded) != 1 {
-		t.Fatalf("expected 1 forwarded manifest, got %d", len(forwarded))
-	}
-
-	if string(forwarded[0]) != "kind: Deployment" {
-		t.Errorf("expected %q, got %q", "kind: Deployment", string(forwarded[0]))
+	if string(forwarded) != "kind: Deployment" {
+		t.Errorf("expected %q, got %q", "kind: Deployment", string(forwarded))
 	}
 }
 
