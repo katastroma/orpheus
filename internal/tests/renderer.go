@@ -18,14 +18,19 @@ type MockRenderServer struct {
 	Responses []*pb.RenderResponse
 	// SendErr is returned by Send when set.
 	SendErr error
+	// RecvErr is returned by Recv when set.
+	RecvErr error
 	// Ctx is returned by Context.
 	Ctx     context.Context
 	recvIdx int
 	grpc.ServerStream
 }
 
-// Recv returns the next pre-loaded request or io.EOF.
+// Recv returns the next pre-loaded request, the configured error, or io.EOF.
 func (s *MockRenderServer) Recv() (*pb.RenderRequest, error) {
+	if s.RecvErr != nil {
+		return nil, s.RecvErr
+	}
 	if s.recvIdx >= len(s.Requests) {
 		return nil, io.EOF
 	}
@@ -34,8 +39,8 @@ func (s *MockRenderServer) Recv() (*pb.RenderRequest, error) {
 	return req, nil
 }
 
-// Send records a response or returns the configured error.
-func (s *MockRenderServer) Send(resp *pb.RenderResponse) error {
+// SendAndClose records the response or returns the configured error.
+func (s *MockRenderServer) SendAndClose(resp *pb.RenderResponse) error {
 	if s.SendErr != nil {
 		return s.SendErr
 	}

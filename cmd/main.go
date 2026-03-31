@@ -59,7 +59,7 @@ func main() {
 	router.Register(kustomize.Type, kustomize.Match, kustomize.Render)
 	router.Register(plain.Type, plain.Match, plain.Render)
 
-	streamFn := orderer.NewStreamFunc(ordererConn)
+	streamFn := orderer.NewStreamFunc(log, ordererConn)
 	service := serve.New(log, router.Render, streamFn)
 
 	mux := http.NewServeMux()

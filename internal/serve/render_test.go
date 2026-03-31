@@ -79,6 +79,10 @@ func TestRender(t *testing.T) {
 	if string(forwarded) != "kind: Deployment" {
 		t.Errorf("expected %q, got %q", "kind: Deployment", string(forwarded))
 	}
+
+	if len(stream.Responses) != 1 {
+		t.Fatalf("expected 1 response, got %d", len(stream.Responses))
+	}
 }
 
 func TestRender_ExtractError(t *testing.T) {
@@ -118,5 +122,32 @@ func TestRender_ForwardError(t *testing.T) {
 
 	if err := svc.Render(stream); err == nil {
 		t.Fatal("expected error when forward fails")
+	}
+}
+
+func TestRender_ReadError(t *testing.T) {
+	svc := New(slog.Default(), successRender, successForward)
+	stream := &tests.MockRenderServer{
+		RecvErr: fmt.Errorf("recv failed"),
+		Ctx:     t.Context(),
+	}
+
+	if err := svc.Render(stream); err == nil {
+		t.Fatal("expected error when read fails")
+	}
+}
+
+func TestRender_SendError(t *testing.T) {
+	data := tarFromFiles(t, render.Files{"app.yaml": []byte("kind: Pod")})
+
+	svc := New(slog.Default(), successRender, successForward)
+	stream := &tests.MockRenderServer{
+		Requests: []*pb.RenderRequest{{Data: data}},
+		SendErr:  fmt.Errorf("send failed"),
+		Ctx:      t.Context(),
+	}
+
+	if err := svc.Render(stream); err == nil {
+		t.Fatal("expected error when send fails")
 	}
 }

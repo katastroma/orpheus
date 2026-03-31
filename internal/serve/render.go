@@ -38,5 +38,10 @@ func (s *Service) Render(stream pb.RendererService_RenderServer) error {
 	}
 	s.log.InfoContext(ctx, "streamed to orderer")
 
+	if err = stream.SendAndClose(&pb.RenderResponse{}); err != nil {
+		s.log.ErrorContext(ctx, "sending response failed", "error", err)
+		return fmt.Errorf("sending response: %w", err)
+	}
+
 	return nil
 }
