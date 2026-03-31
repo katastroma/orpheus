@@ -23,6 +23,8 @@ import (
 	http_health "github.com/katastroma/orpheus/internal/health/http"
 	"github.com/katastroma/orpheus/internal/orderer"
 	"github.com/katastroma/orpheus/internal/render"
+	"github.com/katastroma/orpheus/internal/render/helm"
+	"github.com/katastroma/orpheus/internal/render/kustomize"
 	"github.com/katastroma/orpheus/internal/render/plain"
 	"github.com/katastroma/orpheus/internal/serve"
 )
@@ -53,6 +55,8 @@ func main() {
 	defer ordererConn.Close()
 
 	var router render.Router
+	router.Register(helm.Type, helm.Match, helm.Render)
+	router.Register(kustomize.Type, kustomize.Match, kustomize.Render)
 	router.Register(plain.Type, plain.Match, plain.Render)
 
 	streamFn := orderer.NewStreamFunc(ordererConn)
