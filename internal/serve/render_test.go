@@ -1,4 +1,4 @@
-package serve
+package serve_test
 
 import (
 	"archive/tar"
@@ -11,6 +11,7 @@ import (
 	pb "github.com/katastroma/keleustes"
 
 	"github.com/katastroma/orpheus/internal/render"
+	"github.com/katastroma/orpheus/internal/serve"
 	"github.com/katastroma/orpheus/internal/tests"
 )
 
@@ -66,7 +67,7 @@ func TestRender(t *testing.T) {
 		return nil
 	}
 
-	svc := New(slog.Default(), successRender, captureFn)
+	svc := serve.New(slog.Default(), successRender, captureFn)
 	stream := &tests.MockRenderServer{
 		Requests: []*pb.RenderRequest{{Data: data}},
 		Ctx:      t.Context(),
@@ -86,7 +87,7 @@ func TestRender(t *testing.T) {
 }
 
 func TestRender_ExtractError(t *testing.T) {
-	svc := New(slog.Default(), successRender, successForward)
+	svc := serve.New(slog.Default(), successRender, successForward)
 	stream := &tests.MockRenderServer{
 		Requests: []*pb.RenderRequest{{Data: []byte("not a tar")}},
 		Ctx:      t.Context(),
@@ -100,7 +101,7 @@ func TestRender_ExtractError(t *testing.T) {
 func TestRender_RenderError(t *testing.T) {
 	data := tarFromFiles(t, render.Files{"app.yaml": []byte("kind: Pod")})
 
-	svc := New(slog.Default(), errorRender, successForward)
+	svc := serve.New(slog.Default(), errorRender, successForward)
 	stream := &tests.MockRenderServer{
 		Requests: []*pb.RenderRequest{{Data: data}},
 		Ctx:      t.Context(),
@@ -114,7 +115,7 @@ func TestRender_RenderError(t *testing.T) {
 func TestRender_ForwardError(t *testing.T) {
 	data := tarFromFiles(t, render.Files{"app.yaml": []byte("kind: Pod")})
 
-	svc := New(slog.Default(), successRender, errorForward)
+	svc := serve.New(slog.Default(), successRender, errorForward)
 	stream := &tests.MockRenderServer{
 		Requests: []*pb.RenderRequest{{Data: data}},
 		Ctx:      t.Context(),
@@ -126,7 +127,7 @@ func TestRender_ForwardError(t *testing.T) {
 }
 
 func TestRender_ReadError(t *testing.T) {
-	svc := New(slog.Default(), successRender, successForward)
+	svc := serve.New(slog.Default(), successRender, successForward)
 	stream := &tests.MockRenderServer{
 		RecvErr: fmt.Errorf("recv failed"),
 		Ctx:     t.Context(),
@@ -140,7 +141,7 @@ func TestRender_ReadError(t *testing.T) {
 func TestRender_SendError(t *testing.T) {
 	data := tarFromFiles(t, render.Files{"app.yaml": []byte("kind: Pod")})
 
-	svc := New(slog.Default(), successRender, successForward)
+	svc := serve.New(slog.Default(), successRender, successForward)
 	stream := &tests.MockRenderServer{
 		Requests: []*pb.RenderRequest{{Data: data}},
 		SendErr:  fmt.Errorf("send failed"),

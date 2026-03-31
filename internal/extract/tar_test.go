@@ -1,10 +1,11 @@
-package extract
+package extract_test
 
 import (
 	"archive/tar"
 	"bytes"
 	"testing"
 
+	"github.com/katastroma/orpheus/internal/extract"
 	"github.com/katastroma/orpheus/internal/render"
 	"github.com/katastroma/orpheus/internal/tests"
 )
@@ -45,7 +46,7 @@ func buildTar(t *testing.T, files render.Files) *bytes.Buffer {
 func TestTar(t *testing.T) {
 	buf := buildTar(t, render.Files{"values.yaml": []byte("key: value")})
 
-	files, err := Tar(buf)
+	files, err := extract.Tar(buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -66,7 +67,7 @@ func TestTar_MultipleFiles(t *testing.T) {
 		"b.yaml": []byte("b"),
 	})
 
-	files, err := Tar(buf)
+	files, err := extract.Tar(buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -93,7 +94,7 @@ func TestTar_SkipsDirectories(t *testing.T) {
 		t.Fatalf("closing tar: %v", err)
 	}
 
-	files, err := Tar(&buf)
+	files, err := extract.Tar(&buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -114,7 +115,7 @@ func TestTar_EmptyArchive(t *testing.T) {
 		t.Fatalf("closing tar: %v", err)
 	}
 
-	files, err := Tar(&buf)
+	files, err := extract.Tar(&buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -140,7 +141,7 @@ func TestTar_TruncatedEntry(t *testing.T) {
 	// Truncate: close the underlying buffer without writing content or
 	// closing the tar writer, producing an incomplete entry.
 
-	if _, err := Tar(&buf); err == nil {
+	if _, err := extract.Tar(&buf); err == nil {
 		t.Fatal("expected error for truncated tar entry")
 	}
 }
@@ -148,13 +149,13 @@ func TestTar_TruncatedEntry(t *testing.T) {
 func TestTar_CorruptArchive(t *testing.T) {
 	buf := bytes.NewBufferString("not a tar archive")
 
-	if _, err := Tar(buf); err == nil {
+	if _, err := extract.Tar(buf); err == nil {
 		t.Fatal("expected error for corrupt tar")
 	}
 }
 
 func TestTar_ReadError(t *testing.T) {
-	if _, err := Tar(tests.ErrReader{}); err == nil {
+	if _, err := extract.Tar(tests.ErrReader{}); err == nil {
 		t.Fatal("expected error when reader fails")
 	}
 }

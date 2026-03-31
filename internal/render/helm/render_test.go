@@ -1,10 +1,11 @@
-package helm
+package helm_test
 
 import (
 	"strings"
 	"testing"
 
 	"github.com/katastroma/orpheus/internal/render"
+	"github.com/katastroma/orpheus/internal/render/helm"
 )
 
 func TestRender(t *testing.T) {
@@ -19,7 +20,7 @@ data:
 `),
 	}
 
-	out, err := Render(files)
+	out, err := helm.Render(files)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -46,7 +47,7 @@ spec:
 `),
 	}
 
-	out, err := Render(files)
+	out, err := helm.Render(files)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -61,7 +62,7 @@ func TestRender_InvalidChart(t *testing.T) {
 		"Chart.yaml": []byte("not valid chart"),
 	}
 
-	if _, err := Render(files); err == nil {
+	if _, err := helm.Render(files); err == nil {
 		t.Fatal("expected error for invalid chart")
 	}
 }
@@ -72,13 +73,13 @@ func TestRender_InvalidTemplate(t *testing.T) {
 		"templates/bad.yaml": []byte("{{ .Nonexistent.Deeply.Nested }}"),
 	}
 
-	if _, err := Render(files); err == nil {
+	if _, err := helm.Render(files); err == nil {
 		t.Fatal("expected error for invalid template")
 	}
 }
 
 func TestRender_EmptyFiles(t *testing.T) {
-	if _, err := Render(render.Files{}); err == nil {
+	if _, err := helm.Render(render.Files{}); err == nil {
 		t.Fatal("expected error for empty files")
 	}
 }

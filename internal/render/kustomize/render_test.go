@@ -1,10 +1,11 @@
-package kustomize
+package kustomize_test
 
 import (
 	"strings"
 	"testing"
 
 	"github.com/katastroma/orpheus/internal/render"
+	"github.com/katastroma/orpheus/internal/render/kustomize"
 )
 
 func TestRender(t *testing.T) {
@@ -17,7 +18,7 @@ metadata:
 `),
 	}
 
-	out, err := Render(files)
+	out, err := kustomize.Render(files)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -42,7 +43,7 @@ metadata:
 `),
 	}
 
-	out, err := Render(files)
+	out, err := kustomize.Render(files)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -60,7 +61,7 @@ func TestRender_InvalidKustomization(t *testing.T) {
 		"kustomization.yaml": []byte("not valid kustomization"),
 	}
 
-	if _, err := Render(files); err == nil {
+	if _, err := kustomize.Render(files); err == nil {
 		t.Fatal("expected error for invalid kustomization")
 	}
 }
@@ -70,7 +71,7 @@ func TestRender_MissingResource(t *testing.T) {
 		"kustomization.yaml": []byte("resources:\n- nonexistent.yaml\n"),
 	}
 
-	if _, err := Render(files); err == nil {
+	if _, err := kustomize.Render(files); err == nil {
 		t.Fatal("expected error for missing resource reference")
 	}
 }
@@ -80,7 +81,7 @@ func TestRender_InvalidFilePath(t *testing.T) {
 		"../invalid_file": []byte(""),
 	}
 
-	if _, err := Render(files); err == nil {
+	if _, err := kustomize.Render(files); err == nil {
 		t.Fatal("expected error for invalid file path")
 	}
 }

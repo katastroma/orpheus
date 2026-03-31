@@ -1,16 +1,17 @@
-package plain
+package plain_test
 
 import (
 	"strings"
 	"testing"
 
 	"github.com/katastroma/orpheus/internal/render"
+	"github.com/katastroma/orpheus/internal/render/plain"
 )
 
 func TestRender(t *testing.T) {
 	files := render.Files{"deployment.yaml": []byte("kind: Deployment")}
 
-	out, err := Render(files)
+	out, err := plain.Render(files)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -26,7 +27,7 @@ func TestRender_MultipleFiles(t *testing.T) {
 		"b.yaml": []byte("kind: Deployment"),
 	}
 
-	out, err := Render(files)
+	out, err := plain.Render(files)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -48,7 +49,7 @@ func TestRender_SkipsNonYAML(t *testing.T) {
 		"app.yaml":  []byte("kind: Pod"),
 	}
 
-	out, err := Render(files)
+	out, err := plain.Render(files)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -65,7 +66,7 @@ func TestRender_SkipsNonYAML(t *testing.T) {
 func TestRender_YmlExtension(t *testing.T) {
 	files := render.Files{"service.yml": []byte("kind: Service")}
 
-	out, err := Render(files)
+	out, err := plain.Render(files)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -76,7 +77,7 @@ func TestRender_YmlExtension(t *testing.T) {
 }
 
 func TestRender_EmptyFiles(t *testing.T) {
-	out, err := Render(render.Files{})
+	out, err := plain.Render(render.Files{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
