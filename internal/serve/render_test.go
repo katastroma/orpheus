@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"testing"
 
 	pb "github.com/katastroma/keleustes"
@@ -65,7 +66,7 @@ func TestRender(t *testing.T) {
 		return nil
 	}
 
-	svc := New(successRender, captureFn)
+	svc := New(slog.Default(), successRender, captureFn)
 	stream := &tests.MockRenderServer{
 		Requests: []*pb.RenderRequest{{Data: data}},
 		Ctx:      t.Context(),
@@ -81,7 +82,7 @@ func TestRender(t *testing.T) {
 }
 
 func TestRender_ExtractError(t *testing.T) {
-	svc := New(successRender, successForward)
+	svc := New(slog.Default(), successRender, successForward)
 	stream := &tests.MockRenderServer{
 		Requests: []*pb.RenderRequest{{Data: []byte("not a tar")}},
 		Ctx:      t.Context(),
@@ -95,7 +96,7 @@ func TestRender_ExtractError(t *testing.T) {
 func TestRender_RenderError(t *testing.T) {
 	data := tarFromFiles(t, render.Files{"app.yaml": []byte("kind: Pod")})
 
-	svc := New(errorRender, successForward)
+	svc := New(slog.Default(), errorRender, successForward)
 	stream := &tests.MockRenderServer{
 		Requests: []*pb.RenderRequest{{Data: data}},
 		Ctx:      t.Context(),
@@ -109,7 +110,7 @@ func TestRender_RenderError(t *testing.T) {
 func TestRender_ForwardError(t *testing.T) {
 	data := tarFromFiles(t, render.Files{"app.yaml": []byte("kind: Pod")})
 
-	svc := New(successRender, errorForward)
+	svc := New(slog.Default(), successRender, errorForward)
 	stream := &tests.MockRenderServer{
 		Requests: []*pb.RenderRequest{{Data: data}},
 		Ctx:      t.Context(),

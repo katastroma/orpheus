@@ -47,7 +47,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	ordererConn, err := foundationclient.New(ordererAddr, log, nil, nil)
+	ordererConn, err := foundationclient.New(ordererAddr, nil, nil)
 	if err != nil {
 		log.Error("orderer connection failed", "error", err)
 		os.Exit(1)
@@ -60,7 +60,7 @@ func main() {
 	router.Register(plain.Type, plain.Match, plain.Render)
 
 	streamFn := orderer.NewStreamFunc(ordererConn)
-	service := serve.New(router.Render, streamFn)
+	service := serve.New(log, router.Render, streamFn)
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", http_health.New(log))
