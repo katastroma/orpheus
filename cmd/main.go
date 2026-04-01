@@ -55,12 +55,12 @@ func main() {
 	defer ordererConn.Close()
 
 	var router render.Router
-	router.Register(pb.RendererType_RENDERER_TYPE_HELM, helm.Render)
-	router.Register(pb.RendererType_RENDERER_TYPE_KUSTOMIZE, kustomize.Render)
-	router.Register(pb.RendererType_RENDERER_TYPE_PLAIN, plain.Render)
+	router.Register(pb.RendererType_RENDERER_TYPE_HELM, helm.New())
+	router.Register(pb.RendererType_RENDERER_TYPE_KUSTOMIZE, kustomize.New())
+	router.Register(pb.RendererType_RENDERER_TYPE_PLAIN, plain.New())
 
 	streamFn := orderer.NewStreamFunc(log, ordererConn)
-	service := serve.New(log, router.Render, streamFn)
+	service := serve.New(log, &router, streamFn)
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", http_health.New(log))

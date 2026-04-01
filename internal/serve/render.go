@@ -4,6 +4,7 @@ package serve
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	pb "github.com/katastroma/keleustes"
 	"google.golang.org/grpc/metadata"
@@ -11,6 +12,10 @@ import (
 
 // rendererTypeKey is the gRPC metadata key carrying the renderer type.
 const rendererTypeKey = "renderer-type"
+
+func fail(ctx context.Context, log *slog.Logger, msg string, err error) {
+	log.ErrorContext(ctx, msg, "error", err)
+}
 
 // Render receives a tar archive from the stream, dispatches to the
 // appropriate rendering backend, and streams the result to the orderer.
@@ -20,29 +25,44 @@ func (s *Service) Render(stream pb.RendererService_RenderServer) error {
 
 	rendererType, err := readRendererType(ctx)
 	if err != nil {
-		s.log.ErrorContext(ctx, "reading renderer type failed", "error", err)
+		fail(ctx, s.log, "reading renderer type failed", err)
 		return fmt.Errorf("reading renderer type: %w", err)
 	}
-	s.log.InfoContext(ctx, "renderer type received", "renderer", rendererType.String())
 
-	s.log.DebugContext(ctx, "rendering manifests")
-	manifest, err := s.renderFn(rendererType, &streamReader{stream: stream})
+	log := s.log.With("renderer", rendererType.String())
+	log.InfoContext(ctx, "renderer type received")
+
+	log.DebugContext(ctx, "looking up backend")
+	backend, err := s.router.Lookup(rendererType)
 	if err != nil {
-		s.log.ErrorContext(ctx, "rendering failed", "error", err)
-		return fmt.Errorf("rendering: %w", err)
+		fail(ctx, log, "backend lookup failed", err)
+		return fmt.Errorf("backend lookup: %w", err)
 	}
-	s.log.DebugContext(ctx, "manifests rendered", "bytes", len(manifest))
+	log.DebugContext(ctx, "backend found")
 
-	s.log.DebugContext(ctx, "streaming to orderer")
-	if err = s.streamFn(ctx, manifest); err != nil {
-		s.log.ErrorContext(ctx, "streaming to orderer failed", "error", err)
-		return fmt.Errorf("streaming to orderer: %w", err)
+	log.DebugContext(ctx, "receiving source content")
+	if err = backend.Receive(&streamReader{stream: stream}); err != nil {
+		fail(ctx, log, "receiving failed", err)
+		return fmt.Errorf("receiving: %w", err)
 	}
-	s.log.InfoContext(ctx, "streamed to orderer")
+	log.DebugContext(ctx, "source content received")
 
 	if err = stream.SendAndClose(&pb.RenderResponse{}); err != nil {
-		s.log.ErrorContext(ctx, "sending response failed", "error", err)
+		fail(ctx, log, "sending response failed", err)
 		return fmt.Errorf("sending response: %w", err)
+	}
+
+	log.DebugContext(ctx, "rendering manifests")
+	manifest, err := backend.Render()
+	if err != nil {
+		fail(ctx, log, "rendering failed", err)
+		return nil
+	}
+	log.DebugContext(ctx, "manifests rendered", "bytes", len(manifest))
+
+	log.DebugContext(ctx, "streaming to orderer")
+	if err = s.streamFn(ctx, manifest); err != nil {
+		fail(ctx, log, "streaming to orderer failed", err)
 	}
 
 	return nil

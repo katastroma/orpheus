@@ -8,19 +8,27 @@ import (
 	"path/filepath"
 )
 
-// Render extracts the tar stream and concatenates all YAML files into a
-// single manifest blob.
-func Render(r io.Reader) ([]byte, error) {
-	var out []byte
+// Backend implements render.Backend for plain YAML sources.
+type Backend struct {
+	manifests []byte
+}
+
+// New creates a plain YAML rendering backend.
+func New() *Backend {
+	return &Backend{}
+}
+
+// Receive extracts the tar stream and collects all YAML files.
+func (b *Backend) Receive(r io.Reader) error {
 	tr := tar.NewReader(r)
 
 	for {
 		header, err := tr.Next()
 		if err == io.EOF {
-			break
+			return nil
 		}
 		if err != nil {
-			return nil, fmt.Errorf("reading tar: %w", err)
+			return fmt.Errorf("reading tar: %w", err)
 		}
 
 		if header.Typeflag != tar.TypeReg {
@@ -34,14 +42,17 @@ func Render(r io.Reader) ([]byte, error) {
 
 		content, err := io.ReadAll(tr)
 		if err != nil {
-			return nil, fmt.Errorf("reading %s: %w", header.Name, err)
+			return fmt.Errorf("reading %s: %w", header.Name, err)
 		}
 
-		if len(out) > 0 {
-			out = append(out, []byte("\n---\n")...)
+		if len(b.manifests) > 0 {
+			b.manifests = append(b.manifests, []byte("\n---\n")...)
 		}
-		out = append(out, content...)
+		b.manifests = append(b.manifests, content...)
 	}
+}
 
-	return out, nil
+// Render returns the collected YAML manifests.
+func (b *Backend) Render() ([]byte, error) {
+	return b.manifests, nil
 }

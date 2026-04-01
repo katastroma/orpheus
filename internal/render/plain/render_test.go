@@ -9,11 +9,17 @@ import (
 )
 
 func TestRender(t *testing.T) {
-	r := tests.TarReader(t, map[string][]byte{"deployment.yaml": []byte("kind: Deployment")})
+	b := plain.New()
 
-	out, err := plain.Render(r)
+	if err := b.Receive(tests.TarReader(t, map[string][]byte{
+		"deployment.yaml": []byte("kind: Deployment"),
+	})); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+
+	out, err := b.Render()
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("render: %v", err)
 	}
 
 	if !strings.Contains(string(out), "kind: Deployment") {
@@ -22,14 +28,18 @@ func TestRender(t *testing.T) {
 }
 
 func TestRender_MultipleFiles(t *testing.T) {
-	r := tests.TarReader(t, map[string][]byte{
+	b := plain.New()
+
+	if err := b.Receive(tests.TarReader(t, map[string][]byte{
 		"a.yaml": []byte("kind: Namespace"),
 		"b.yaml": []byte("kind: Deployment"),
-	})
+	})); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
 
-	out, err := plain.Render(r)
+	out, err := b.Render()
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("render: %v", err)
 	}
 
 	if !strings.Contains(string(out), "kind: Namespace") {
@@ -44,31 +54,40 @@ func TestRender_MultipleFiles(t *testing.T) {
 }
 
 func TestRender_SkipsNonYAML(t *testing.T) {
-	r := tests.TarReader(t, map[string][]byte{
+	b := plain.New()
+
+	if err := b.Receive(tests.TarReader(t, map[string][]byte{
 		"README.md": []byte("# Hello"),
 		"app.yaml":  []byte("kind: Pod"),
-	})
+	})); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
 
-	out, err := plain.Render(r)
+	out, err := b.Render()
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("render: %v", err)
 	}
 
 	if strings.Contains(string(out), "Hello") {
 		t.Error("expected non-YAML file to be skipped")
 	}
-
 	if !strings.Contains(string(out), "kind: Pod") {
 		t.Error("expected YAML file in output")
 	}
 }
 
 func TestRender_YmlExtension(t *testing.T) {
-	r := tests.TarReader(t, map[string][]byte{"service.yml": []byte("kind: Service")})
+	b := plain.New()
 
-	out, err := plain.Render(r)
+	if err := b.Receive(tests.TarReader(t, map[string][]byte{
+		"service.yml": []byte("kind: Service"),
+	})); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+
+	out, err := b.Render()
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("render: %v", err)
 	}
 
 	if !strings.Contains(string(out), "kind: Service") {
@@ -77,11 +96,15 @@ func TestRender_YmlExtension(t *testing.T) {
 }
 
 func TestRender_EmptyArchive(t *testing.T) {
-	r := tests.TarReader(t, map[string][]byte{})
+	b := plain.New()
 
-	out, err := plain.Render(r)
+	if err := b.Receive(tests.TarReader(t, map[string][]byte{})); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+
+	out, err := b.Render()
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("render: %v", err)
 	}
 
 	if len(out) != 0 {

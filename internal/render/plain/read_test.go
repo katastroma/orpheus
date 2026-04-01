@@ -7,28 +7,33 @@ import (
 	"github.com/katastroma/orpheus/internal/tests"
 )
 
-func TestRender_TarReadError(t *testing.T) {
-	if _, err := Render(tests.ErrReader{}); err == nil {
+func TestReceive_TarReadError(t *testing.T) {
+	b := &Backend{}
+	if err := b.Receive(tests.ErrReader{}); err == nil {
 		t.Fatal("expected error when tar read fails")
 	}
 }
 
-func TestRender_TruncatedEntry(t *testing.T) {
-	r := tests.TruncatedTarReader(t, "app.yaml", 1000)
-
-	if _, err := Render(r); err == nil {
+func TestReceive_TruncatedEntry(t *testing.T) {
+	b := &Backend{}
+	if err := b.Receive(tests.TruncatedTarReader(t, "app.yaml", 1000)); err == nil {
 		t.Fatal("expected error for truncated tar entry")
 	}
 }
 
-func TestRender_SkipsDirectories(t *testing.T) {
+func TestReceive_SkipsDirectories(t *testing.T) {
+	b := &Backend{}
 	r := tests.TarReaderWithDir(t, "deploy/", map[string][]byte{
 		"deploy/app.yaml": []byte("kind: Pod"),
 	})
 
-	out, err := Render(r)
-	if err != nil {
+	if err := b.Receive(r); err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	out, err := b.Render()
+	if err != nil {
+		t.Fatalf("render: %v", err)
 	}
 
 	if !strings.Contains(string(out), "kind: Pod") {
@@ -36,8 +41,9 @@ func TestRender_SkipsDirectories(t *testing.T) {
 	}
 }
 
-func TestRender_CorruptArchive(t *testing.T) {
-	if _, err := Render(strings.NewReader("not a tar")); err == nil {
+func TestReceive_CorruptArchive(t *testing.T) {
+	b := &Backend{}
+	if err := b.Receive(strings.NewReader("not a tar")); err == nil {
 		t.Fatal("expected error for corrupt archive")
 	}
 }

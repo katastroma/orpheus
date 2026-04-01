@@ -9,14 +9,18 @@ import (
 )
 
 func TestRender(t *testing.T) {
-	r := tests.TarReader(t, map[string][]byte{
-		"kustomization.yaml": []byte("resources:\n- deployment.yaml\n"),
-		"deployment.yaml": []byte("apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: test\n"),
-	})
+	b := kustomize.New()
 
-	out, err := kustomize.Render(r)
+	if err := b.Receive(tests.TarReader(t, map[string][]byte{
+		"kustomization.yaml": []byte("resources:\n- deployment.yaml\n"),
+		"deployment.yaml":    []byte("apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: test\n"),
+	})); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+
+	out, err := b.Render()
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("render: %v", err)
 	}
 
 	if !strings.Contains(string(out), "kind: Deployment") {
@@ -25,15 +29,19 @@ func TestRender(t *testing.T) {
 }
 
 func TestRender_MultipleResources(t *testing.T) {
-	r := tests.TarReader(t, map[string][]byte{
+	b := kustomize.New()
+
+	if err := b.Receive(tests.TarReader(t, map[string][]byte{
 		"kustomization.yaml": []byte("resources:\n- deployment.yaml\n- service.yaml\n"),
 		"deployment.yaml":    []byte("apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: test\n"),
 		"service.yaml":       []byte("apiVersion: v1\nkind: Service\nmetadata:\n  name: test\n"),
-	})
+	})); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
 
-	out, err := kustomize.Render(r)
+	out, err := b.Render()
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("render: %v", err)
 	}
 
 	if !strings.Contains(string(out), "kind: Deployment") {
@@ -45,27 +53,37 @@ func TestRender_MultipleResources(t *testing.T) {
 }
 
 func TestRender_InvalidKustomization(t *testing.T) {
-	r := tests.TarReader(t, map[string][]byte{
-		"kustomization.yaml": []byte("not valid kustomization"),
-	})
+	b := kustomize.New()
 
-	if _, err := kustomize.Render(r); err == nil {
+	if err := b.Receive(tests.TarReader(t, map[string][]byte{
+		"kustomization.yaml": []byte("not valid kustomization"),
+	})); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+
+	if _, err := b.Render(); err == nil {
 		t.Fatal("expected error for invalid kustomization")
 	}
 }
 
-func TestRender_CorruptArchive(t *testing.T) {
-	if _, err := kustomize.Render(strings.NewReader("not a tar")); err == nil {
-		t.Fatal("expected error for corrupt archive")
+func TestRender_MissingResource(t *testing.T) {
+	b := kustomize.New()
+
+	if err := b.Receive(tests.TarReader(t, map[string][]byte{
+		"kustomization.yaml": []byte("resources:\n- nonexistent.yaml\n"),
+	})); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+
+	if _, err := b.Render(); err == nil {
+		t.Fatal("expected error for missing resource reference")
 	}
 }
 
-func TestRender_MissingResource(t *testing.T) {
-	r := tests.TarReader(t, map[string][]byte{
-		"kustomization.yaml": []byte("resources:\n- nonexistent.yaml\n"),
-	})
+func TestRender_CorruptArchive(t *testing.T) {
+	b := kustomize.New()
 
-	if _, err := kustomize.Render(r); err == nil {
-		t.Fatal("expected error for missing resource reference")
+	if err := b.Receive(strings.NewReader("not a tar")); err == nil {
+		t.Fatal("expected error for corrupt archive")
 	}
 }

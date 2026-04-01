@@ -14,11 +14,11 @@ import (
 type Service struct {
 	pb.UnimplementedRendererServiceServer
 	log      *slog.Logger
-	renderFn render.DispatchFunc
+	router   *render.Router
 	streamFn orderer.StreamFunc
 }
 
-// New creates a Service with the given logger, render, and stream functions.
-func New(log *slog.Logger, renderFn render.DispatchFunc, streamFn orderer.StreamFunc) *Service {
-	return &Service{log: log, renderFn: renderFn, streamFn: streamFn}
+// New creates a Service with the given logger, router, and stream function.
+func New(log *slog.Logger, router *render.Router, streamFn orderer.StreamFunc) *Service {
+	return &Service{log: log, router: router, streamFn: streamFn}
 }

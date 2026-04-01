@@ -11,16 +11,31 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
-// Render extracts the tar stream into an in-memory filesystem and runs
-// kustomize build on it.
-func Render(r io.Reader) ([]byte, error) {
+// Backend implements render.Backend for Kustomize sources.
+type Backend struct {
+	fSys filesys.FileSystem
+}
+
+// New creates a Kustomize rendering backend.
+func New() *Backend {
+	return &Backend{}
+}
+
+// Receive extracts the tar stream into an in-memory filesystem.
+func (b *Backend) Receive(r io.Reader) error {
 	fSys, err := extractToFS(r)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
+	b.fSys = fSys
+	return nil
+}
+
+// Render runs kustomize build on the received filesystem.
+func (b *Backend) Render() ([]byte, error) {
 	k := krusty.MakeKustomizer(krusty.MakeDefaultOptions())
-	resMap, err := k.Run(fSys, ".")
+	resMap, err := k.Run(b.fSys, ".")
 	if err != nil {
 		return nil, fmt.Errorf("running kustomize: %w", err)
 	}

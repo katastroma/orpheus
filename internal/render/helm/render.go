@@ -2,6 +2,7 @@
 package helm
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 
@@ -12,8 +13,7 @@ import (
 
 const releaseName = "release"
 
-// Render loads a Helm chart from the tar stream and returns the rendered
-// manifest blob.
+// Backend implements render.Backend for Helm charts.
 //
 // The incoming tar contains bare paths (Chart.yaml, templates/foo.yaml).
 // Helm's LoadArchive — the only stable in-memory chart loading API — requires
@@ -23,14 +23,31 @@ const releaseName = "release"
 //
 // To avoid leaking this helm packaging convention into upstream services, we
 // repackage the tar here: entries are read one at a time, written into a new
-// tar with a directory prefix, gzip-compressed, and piped to LoadArchive.
-// This copies every byte twice — once through the repackage, once through
-// LoadArchive's internal extraction — but keeps the helm SDK requirement
-// contained in the only place that imports it.
-func Render(r io.Reader) ([]byte, error) {
-	archive := repackage(r)
+// tar with a directory prefix, gzip-compressed, and buffered. This copies
+// every byte twice — once through the repackage, once through LoadArchive's
+// internal extraction — but keeps the helm SDK requirement contained in the
+// only place that imports it.
+type Backend struct {
+	archive bytes.Buffer
+}
 
-	chart, err := loader.LoadArchive(archive)
+// New creates a Helm rendering backend.
+func New() *Backend {
+	return &Backend{}
+}
+
+// Receive repackages the tar stream into the gzipped format LoadArchive expects.
+func (b *Backend) Receive(r io.Reader) error {
+	if _, err := io.Copy(&b.archive, repackage(r)); err != nil {
+		return fmt.Errorf("repackaging chart archive: %w", err)
+	}
+
+	return nil
+}
+
+// Render loads the buffered chart archive and produces a rendered manifest blob.
+func (b *Backend) Render() ([]byte, error) {
+	chart, err := loader.LoadArchive(&b.archive)
 	if err != nil {
 		return nil, fmt.Errorf("loading chart: %w", err)
 	}

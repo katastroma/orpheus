@@ -1,57 +1,40 @@
 package render_test
 
 import (
-	"fmt"
-	"io"
-	"strings"
 	"testing"
 
 	"github.com/katastroma/keleustes"
 	"github.com/katastroma/orpheus/internal/render"
+	"github.com/katastroma/orpheus/internal/tests"
 )
 
-func TestRouter_Render(t *testing.T) {
+func TestRouter_Lookup(t *testing.T) {
 	var r render.Router
-	r.Register(keleustes.RendererType_RENDERER_TYPE_PLAIN, func(_ io.Reader) ([]byte, error) {
-		return []byte("manifest"), nil
-	})
+	r.Register(keleustes.RendererType_RENDERER_TYPE_PLAIN, &tests.MockBackend{})
 
-	out, err := r.Render(keleustes.RendererType_RENDERER_TYPE_PLAIN, strings.NewReader(""))
+	backend, err := r.Lookup(keleustes.RendererType_RENDERER_TYPE_PLAIN)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if string(out) != "manifest" {
-		t.Errorf("expected %q, got %q", "manifest", string(out))
+	if backend == nil {
+		t.Fatal("expected non-nil backend")
 	}
 }
 
-func TestRouter_Render_NoMatch(t *testing.T) {
+func TestRouter_Lookup_NotRegistered(t *testing.T) {
 	var r render.Router
-	r.Register(keleustes.RendererType_RENDERER_TYPE_PLAIN, func(_ io.Reader) ([]byte, error) {
-		return nil, nil
-	})
+	r.Register(keleustes.RendererType_RENDERER_TYPE_PLAIN, &tests.MockBackend{})
 
-	if _, err := r.Render(keleustes.RendererType_RENDERER_TYPE_HELM, strings.NewReader("")); err == nil {
+	if _, err := r.Lookup(keleustes.RendererType_RENDERER_TYPE_HELM); err == nil {
 		t.Fatal("expected error when no backend registered for type")
 	}
 }
 
-func TestRouter_Render_Empty(t *testing.T) {
+func TestRouter_Lookup_Empty(t *testing.T) {
 	var r render.Router
 
-	if _, err := r.Render(keleustes.RendererType_RENDERER_TYPE_PLAIN, strings.NewReader("")); err == nil {
+	if _, err := r.Lookup(keleustes.RendererType_RENDERER_TYPE_PLAIN); err == nil {
 		t.Fatal("expected error with no registered backends")
-	}
-}
-
-func TestRouter_Render_BackendError(t *testing.T) {
-	var r render.Router
-	r.Register(keleustes.RendererType_RENDERER_TYPE_HELM, func(_ io.Reader) ([]byte, error) {
-		return nil, fmt.Errorf("render failed")
-	})
-
-	if _, err := r.Render(keleustes.RendererType_RENDERER_TYPE_HELM, strings.NewReader("")); err == nil {
-		t.Fatal("expected error from backend")
 	}
 }
