@@ -8,7 +8,7 @@ import (
 )
 
 func TestReadRendererType(t *testing.T) {
-	md := metadata.Pairs(rendererTypeKey, keleustes.RendererType_RENDERER_TYPE_HELM.String())
+	md := metadata.Pairs(keleustes.RendererTypeMetadataKey, keleustes.RendererType_RENDERER_TYPE_HELM.String())
 	ctx := metadata.NewIncomingContext(t.Context(), md)
 
 	got, err := readRendererType(ctx)
@@ -37,7 +37,7 @@ func TestReadRendererType_MissingKey(t *testing.T) {
 }
 
 func TestReadRendererType_UnknownType(t *testing.T) {
-	md := metadata.Pairs(rendererTypeKey, "RENDERER_TYPE_UNKNOWN")
+	md := metadata.Pairs(keleustes.RendererTypeMetadataKey, "RENDERER_TYPE_UNKNOWN")
 	ctx := metadata.NewIncomingContext(t.Context(), md)
 
 	if _, err := readRendererType(ctx); err == nil {

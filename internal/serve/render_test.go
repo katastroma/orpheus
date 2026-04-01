@@ -16,7 +16,7 @@ import (
 
 func renderContext(t *testing.T, rendererType pb.RendererType) context.Context {
 	t.Helper()
-	md := metadata.Pairs("renderer-type", rendererType.String())
+	md := metadata.Pairs(pb.RendererTypeMetadataKey, rendererType.String())
 	return metadata.NewIncomingContext(t.Context(), md)
 }
 

@@ -10,8 +10,6 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// rendererTypeKey is the gRPC metadata key carrying the renderer type.
-const rendererTypeKey = "renderer-type"
 
 func fail(ctx context.Context, log *slog.Logger, msg string, err error) {
 	log.ErrorContext(ctx, msg, "error", err)
@@ -74,9 +72,9 @@ func readRendererType(ctx context.Context) (pb.RendererType, error) {
 		return pb.RendererType_RENDERER_TYPE_UNSPECIFIED, fmt.Errorf("no gRPC metadata")
 	}
 
-	values := md.Get(rendererTypeKey)
+	values := md.Get(pb.RendererTypeMetadataKey)
 	if len(values) == 0 {
-		return pb.RendererType_RENDERER_TYPE_UNSPECIFIED, fmt.Errorf("missing %s metadata", rendererTypeKey)
+		return pb.RendererType_RENDERER_TYPE_UNSPECIFIED, fmt.Errorf("missing %s metadata", pb.RendererTypeMetadataKey)
 	}
 
 	rendererType, ok := pb.RendererType_value[values[0]]

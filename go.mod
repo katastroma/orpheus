@@ -5,7 +5,7 @@ go 1.26.1
 require (
 	git.sonicoriginal.software/grpc-foundation v0.3.0
 	github.com/katastroma/diataxis v0.3.5
-	github.com/katastroma/keleustes v0.4.5
+	github.com/katastroma/keleustes v0.4.6
 	google.golang.org/grpc v1.79.3
 	sigs.k8s.io/kustomize/api v0.21.1
 	sigs.k8s.io/kustomize/kyaml v0.21.1
