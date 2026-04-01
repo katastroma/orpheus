@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.2.3 - 2026-04-01
+#### Bug Fixes
+- use backend interface instead of closure - (ac0887c) - Nathan Blair
+#### Tests
+- better test hygiene - (ac40cd7) - Nathan Blair
+#### Miscellaneous Chores
+- HEFTY upgrade to helm v4 - (52c265d) - Nathan Blair
+
+- - -
+
 ## 0.2.2 - 2026-03-31
 #### Bug Fixes
 - use client-streaming - (f7f0d4c) - Nathan Blair
