@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.2.5 - 2026-04-01
+#### Bug Fixes
+- decouple incoming signal from processing and forwarding - (16bfaad) - Nathan Blair
+
+- - -
+
 ## 0.2.4 - 2026-04-01
 #### Bug Fixes
 - use rendertype metadata key from keleustes - (5eaf3dd) - Nathan Blair
