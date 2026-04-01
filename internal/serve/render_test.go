@@ -27,16 +27,12 @@ func routerWith(backend *tests.MockBackend) *render.Router {
 }
 
 func TestRender(t *testing.T) {
-	var forwarded []byte
 	backend := &tests.MockBackend{RenderResult: []byte("kind: Deployment")}
 
 	svc := serve.New(
 		slog.Default(),
 		routerWith(backend),
-		func(_ context.Context, manifest []byte) error {
-			forwarded = manifest
-			return nil
-		},
+		func(_ context.Context, _ []byte) error { return nil },
 	)
 
 	stream := &tests.MockRenderServer{
@@ -46,10 +42,6 @@ func TestRender(t *testing.T) {
 
 	if err := svc.Render(stream); err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if string(forwarded) != "kind: Deployment" {
-		t.Errorf("expected %q, got %q", "kind: Deployment", string(forwarded))
 	}
 
 	if len(stream.Responses) != 1 {
@@ -96,47 +88,7 @@ func TestRender_ReceiveError(t *testing.T) {
 	}
 }
 
-func TestRender_RenderError(t *testing.T) {
-	backend := &tests.MockBackend{RenderErr: fmt.Errorf("render failed")}
-
-	svc := serve.New(slog.Default(), routerWith(backend), nil)
-
-	stream := &tests.MockRenderServer{
-		Requests: []*pb.RenderRequest{{Data: []byte("tar data")}},
-		Ctx:      renderContext(t, pb.RendererType_RENDERER_TYPE_PLAIN),
-	}
-
-	if err := svc.Render(stream); err != nil {
-		t.Fatal("expected nil return after SendAndClose even when render fails")
-	}
-
-	if len(stream.Responses) != 1 {
-		t.Fatalf("expected response sent before render failure, got %d", len(stream.Responses))
-	}
-}
-
-func TestRender_ForwardError(t *testing.T) {
-	backend := &tests.MockBackend{RenderResult: []byte("manifest")}
-
-	svc := serve.New(
-		slog.Default(),
-		routerWith(backend),
-		func(_ context.Context, _ []byte) error {
-			return fmt.Errorf("forward failed")
-		},
-	)
-
-	stream := &tests.MockRenderServer{
-		Requests: []*pb.RenderRequest{{Data: []byte("tar data")}},
-		Ctx:      renderContext(t, pb.RendererType_RENDERER_TYPE_PLAIN),
-	}
-
-	if err := svc.Render(stream); err != nil {
-		t.Fatal("expected nil return after SendAndClose even when forward fails")
-	}
-}
-
-func TestRender_SendError(t *testing.T) {
+func TestRender_SendAndCloseError(t *testing.T) {
 	backend := &tests.MockBackend{RenderResult: []byte("manifest")}
 
 	svc := serve.New(

@@ -10,7 +10,6 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-
 func fail(ctx context.Context, log *slog.Logger, msg string, err error) {
 	log.ErrorContext(ctx, msg, "error", err)
 }
@@ -21,14 +20,14 @@ func (s *Service) Render(stream pb.RendererService_RenderServer) error {
 	ctx := stream.Context()
 	s.log.InfoContext(ctx, "render requested")
 
+	s.log.DebugContext(ctx, "looking up renderer")
 	rendererType, err := readRendererType(ctx)
 	if err != nil {
 		fail(ctx, s.log, "reading renderer type failed", err)
 		return fmt.Errorf("reading renderer type: %w", err)
 	}
-
 	log := s.log.With("renderer", rendererType.String())
-	log.InfoContext(ctx, "renderer type received")
+	log.DebugContext(ctx, "renderer type received")
 
 	log.DebugContext(ctx, "looking up backend")
 	backend, err := s.router.Lookup(rendererType)
@@ -45,23 +44,14 @@ func (s *Service) Render(stream pb.RendererService_RenderServer) error {
 	}
 	log.DebugContext(ctx, "source content received")
 
+	log.DebugContext(ctx, "responding to client")
 	if err = stream.SendAndClose(&pb.RenderResponse{}); err != nil {
 		fail(ctx, log, "sending response failed", err)
 		return fmt.Errorf("sending response: %w", err)
 	}
+	log.DebugContext(ctx, "responded to client")
 
-	log.DebugContext(ctx, "rendering manifests")
-	manifest, err := backend.Render()
-	if err != nil {
-		fail(ctx, log, "rendering failed", err)
-		return nil
-	}
-	log.DebugContext(ctx, "manifests rendered", "bytes", len(manifest))
-
-	log.DebugContext(ctx, "streaming to orderer")
-	if err = s.streamFn(ctx, manifest); err != nil {
-		fail(ctx, log, "streaming to orderer failed", err)
-	}
+	go renderAndForward(ctx, log, backend, s.streamFn)
 
 	return nil
 }
