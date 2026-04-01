@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.2.4 - 2026-04-01
+#### Bug Fixes
+- use rendertype metadata key from keleustes - (5eaf3dd) - Nathan Blair
+
+- - -
+
 ## 0.2.3 - 2026-04-01
 #### Bug Fixes
 - use backend interface instead of closure - (ac0887c) - Nathan Blair
