@@ -4,14 +4,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/katastroma/orpheus/internal/render"
 	"github.com/katastroma/orpheus/internal/render/plain"
+	"github.com/katastroma/orpheus/internal/tests"
 )
 
 func TestRender(t *testing.T) {
-	files := render.Files{"deployment.yaml": []byte("kind: Deployment")}
+	r := tests.TarReader(t, map[string][]byte{"deployment.yaml": []byte("kind: Deployment")})
 
-	out, err := plain.Render(files)
+	out, err := plain.Render(r)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -22,12 +22,12 @@ func TestRender(t *testing.T) {
 }
 
 func TestRender_MultipleFiles(t *testing.T) {
-	files := render.Files{
+	r := tests.TarReader(t, map[string][]byte{
 		"a.yaml": []byte("kind: Namespace"),
 		"b.yaml": []byte("kind: Deployment"),
-	}
+	})
 
-	out, err := plain.Render(files)
+	out, err := plain.Render(r)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -44,12 +44,12 @@ func TestRender_MultipleFiles(t *testing.T) {
 }
 
 func TestRender_SkipsNonYAML(t *testing.T) {
-	files := render.Files{
+	r := tests.TarReader(t, map[string][]byte{
 		"README.md": []byte("# Hello"),
 		"app.yaml":  []byte("kind: Pod"),
-	}
+	})
 
-	out, err := plain.Render(files)
+	out, err := plain.Render(r)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -64,9 +64,9 @@ func TestRender_SkipsNonYAML(t *testing.T) {
 }
 
 func TestRender_YmlExtension(t *testing.T) {
-	files := render.Files{"service.yml": []byte("kind: Service")}
+	r := tests.TarReader(t, map[string][]byte{"service.yml": []byte("kind: Service")})
 
-	out, err := plain.Render(files)
+	out, err := plain.Render(r)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -76,8 +76,10 @@ func TestRender_YmlExtension(t *testing.T) {
 	}
 }
 
-func TestRender_EmptyFiles(t *testing.T) {
-	out, err := plain.Render(render.Files{})
+func TestRender_EmptyArchive(t *testing.T) {
+	r := tests.TarReader(t, map[string][]byte{})
+
+	out, err := plain.Render(r)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

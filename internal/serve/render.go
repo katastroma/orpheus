@@ -2,29 +2,31 @@
 package serve
 
 import (
+	"context"
 	"fmt"
 
 	pb "github.com/katastroma/keleustes"
-
-	"github.com/katastroma/orpheus/internal/extract"
+	"google.golang.org/grpc/metadata"
 )
 
-// Render receives a tar archive from the stream, extracts it, renders
-// manifests, and streams them to the orderer.
+// rendererTypeKey is the gRPC metadata key carrying the renderer type.
+const rendererTypeKey = "renderer-type"
+
+// Render receives a tar archive from the stream, dispatches to the
+// appropriate rendering backend, and streams the result to the orderer.
 func (s *Service) Render(stream pb.RendererService_RenderServer) error {
 	ctx := stream.Context()
 	s.log.InfoContext(ctx, "render requested")
 
-	s.log.DebugContext(ctx, "extracting source archive")
-	files, err := extract.Tar(&streamReader{stream: stream})
+	rendererType, err := readRendererType(ctx)
 	if err != nil {
-		s.log.ErrorContext(ctx, "extraction failed", "error", err)
-		return fmt.Errorf("extracting source: %w", err)
+		s.log.ErrorContext(ctx, "reading renderer type failed", "error", err)
+		return fmt.Errorf("reading renderer type: %w", err)
 	}
-	s.log.DebugContext(ctx, "source extracted", "files", len(files))
+	s.log.InfoContext(ctx, "renderer type received", "renderer", rendererType.String())
 
 	s.log.DebugContext(ctx, "rendering manifests")
-	manifest, err := s.renderFn(files)
+	manifest, err := s.renderFn(rendererType, &streamReader{stream: stream})
 	if err != nil {
 		s.log.ErrorContext(ctx, "rendering failed", "error", err)
 		return fmt.Errorf("rendering: %w", err)
@@ -44,4 +46,23 @@ func (s *Service) Render(stream pb.RendererService_RenderServer) error {
 	}
 
 	return nil
+}
+
+func readRendererType(ctx context.Context) (pb.RendererType, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return pb.RendererType_RENDERER_TYPE_UNSPECIFIED, fmt.Errorf("no gRPC metadata")
+	}
+
+	values := md.Get(rendererTypeKey)
+	if len(values) == 0 {
+		return pb.RendererType_RENDERER_TYPE_UNSPECIFIED, fmt.Errorf("missing %s metadata", rendererTypeKey)
+	}
+
+	rendererType, ok := pb.RendererType_value[values[0]]
+	if !ok {
+		return pb.RendererType_RENDERER_TYPE_UNSPECIFIED, fmt.Errorf("unknown renderer type %q", values[0])
+	}
+
+	return pb.RendererType(rendererType), nil
 }

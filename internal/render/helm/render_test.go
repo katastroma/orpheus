@@ -4,23 +4,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/katastroma/orpheus/internal/render"
 	"github.com/katastroma/orpheus/internal/render/helm"
+	"github.com/katastroma/orpheus/internal/tests"
 )
 
 func TestRender(t *testing.T) {
-	files := render.Files{
-		"Chart.yaml": []byte("apiVersion: v2\nname: test\nversion: 0.1.0\n"),
-		"templates/configmap.yaml": []byte(`apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ .Release.Name }}-config
-data:
-  key: value
-`),
-	}
+	r := tests.TarReader(t, map[string][]byte{
+		"Chart.yaml":              []byte("apiVersion: v2\nname: test\nversion: 0.1.0\n"),
+		"templates/configmap.yaml": []byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: {{ .Release.Name }}-config\ndata:\n  key: value\n"),
+	})
 
-	out, err := helm.Render(files)
+	out, err := helm.Render(r)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -35,19 +29,13 @@ data:
 }
 
 func TestRender_WithValues(t *testing.T) {
-	files := render.Files{
-		"Chart.yaml":  []byte("apiVersion: v2\nname: test\nversion: 0.1.0\n"),
-		"values.yaml": []byte("replicas: 3\n"),
-		"templates/deployment.yaml": []byte(`apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: test
-spec:
-  replicas: {{ .Values.replicas }}
-`),
-	}
+	r := tests.TarReader(t, map[string][]byte{
+		"Chart.yaml":              []byte("apiVersion: v2\nname: test\nversion: 0.1.0\n"),
+		"values.yaml":             []byte("replicas: 3\n"),
+		"templates/deployment.yaml": []byte("apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: test\nspec:\n  replicas: {{ .Values.replicas }}\n"),
+	})
 
-	out, err := helm.Render(files)
+	out, err := helm.Render(r)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -57,29 +45,48 @@ spec:
 	}
 }
 
-func TestRender_InvalidChart(t *testing.T) {
-	files := render.Files{
-		"Chart.yaml": []byte("not valid chart"),
-	}
+func TestRender_NestedChart(t *testing.T) {
+	r := tests.TarReader(t, map[string][]byte{
+		"test/Chart.yaml":              []byte("apiVersion: v2\nname: test\nversion: 0.1.0\n"),
+		"test/templates/configmap.yaml": []byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test\n"),
+	})
 
-	if _, err := helm.Render(files); err == nil {
+	if _, err := helm.Render(r); err == nil {
+		t.Fatal("expected error for chart not at archive root")
+	}
+}
+
+func TestRender_InvalidChart(t *testing.T) {
+	r := tests.TarReader(t, map[string][]byte{
+		"Chart.yaml": []byte("not valid chart"),
+	})
+
+	if _, err := helm.Render(r); err == nil {
 		t.Fatal("expected error for invalid chart")
 	}
 }
 
 func TestRender_InvalidTemplate(t *testing.T) {
-	files := render.Files{
-		"Chart.yaml": []byte("apiVersion: v2\nname: test\nversion: 0.1.0\n"),
+	r := tests.TarReader(t, map[string][]byte{
+		"Chart.yaml":         []byte("apiVersion: v2\nname: test\nversion: 0.1.0\n"),
 		"templates/bad.yaml": []byte("{{ .Nonexistent.Deeply.Nested }}"),
-	}
+	})
 
-	if _, err := helm.Render(files); err == nil {
+	if _, err := helm.Render(r); err == nil {
 		t.Fatal("expected error for invalid template")
 	}
 }
 
-func TestRender_EmptyFiles(t *testing.T) {
-	if _, err := helm.Render(render.Files{}); err == nil {
-		t.Fatal("expected error for empty files")
+func TestRender_ReadError(t *testing.T) {
+	if _, err := helm.Render(tests.ErrReader{}); err == nil {
+		t.Fatal("expected error when reader fails")
+	}
+}
+
+func TestRender_EmptyArchive(t *testing.T) {
+	r := tests.TarReader(t, map[string][]byte{})
+
+	if _, err := helm.Render(r); err == nil {
+		t.Fatal("expected error for empty archive")
 	}
 }

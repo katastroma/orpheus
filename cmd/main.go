@@ -55,9 +55,9 @@ func main() {
 	defer ordererConn.Close()
 
 	var router render.Router
-	router.Register(helm.Type, helm.Match, helm.Render)
-	router.Register(kustomize.Type, kustomize.Match, kustomize.Render)
-	router.Register(plain.Type, plain.Match, plain.Render)
+	router.Register(pb.RendererType_RENDERER_TYPE_HELM, helm.Render)
+	router.Register(pb.RendererType_RENDERER_TYPE_KUSTOMIZE, kustomize.Render)
+	router.Register(pb.RendererType_RENDERER_TYPE_PLAIN, plain.Render)
 
 	streamFn := orderer.NewStreamFunc(log, ordererConn)
 	service := serve.New(log, router.Render, streamFn)

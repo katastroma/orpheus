@@ -3,46 +3,36 @@ package render
 
 import (
 	"fmt"
-	"slices"
+	"io"
+
+	pb "github.com/katastroma/keleustes"
 )
 
-// Files maps file paths to their contents.
-type Files map[string][]byte
+// Func renders source content into a YAML manifest blob.
+type Func func(io.Reader) ([]byte, error)
 
-// Func renders source files into a YAML manifest blob.
-type Func func(Files) ([]byte, error)
+// DispatchFunc dispatches rendering to a backend based on renderer type.
+type DispatchFunc func(pb.RendererType, io.Reader) ([]byte, error)
 
-// MatchFunc reports whether the source files match a rendering backend.
-type MatchFunc func(Files) bool
-
-type entry struct {
-	name  string
-	match MatchFunc
-	fn    Func
-}
-
-// Router dispatches rendering to the first registered backend whose match
-// predicate returns true. Registration order determines priority.
+// Router dispatches rendering to the backend registered for a given type.
 type Router struct {
-	backends []entry
+	backends map[pb.RendererType]Func
 }
 
-// Register adds a rendering backend with a match predicate.
-func (r *Router) Register(name string, match MatchFunc, fn Func) {
-	r.backends = append(r.backends, entry{name: name, match: match, fn: fn})
+// Register adds a rendering backend for a renderer type.
+func (r *Router) Register(rendererType pb.RendererType, fn Func) {
+	if r.backends == nil {
+		r.backends = make(map[pb.RendererType]Func)
+	}
+	r.backends[rendererType] = fn
 }
 
-func match(files Files) func(entry) bool {
-	return func(e entry) bool { return e.match(files) }
-}
-
-// Render dispatches to the first backend whose match predicate returns true.
-func (r *Router) Render(files Files) ([]byte, error) {
-	idx := slices.IndexFunc(r.backends, match(files))
-
-	if idx < 0 {
-		return nil, fmt.Errorf("no matching renderer")
+// Render dispatches to the backend registered for the given type.
+func (r *Router) Render(rendererType pb.RendererType, reader io.Reader) ([]byte, error) {
+	fn, ok := r.backends[rendererType]
+	if !ok {
+		return nil, fmt.Errorf("no renderer registered for %s", rendererType)
 	}
 
-	return r.backends[idx].fn(files)
+	return fn(reader)
 }

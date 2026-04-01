@@ -1,76 +1,42 @@
 package serve_test
 
 import (
-	"archive/tar"
-	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"testing"
 
 	pb "github.com/katastroma/keleustes"
+	"google.golang.org/grpc/metadata"
 
-	"github.com/katastroma/orpheus/internal/render"
 	"github.com/katastroma/orpheus/internal/serve"
 	"github.com/katastroma/orpheus/internal/tests"
 )
 
-func tarFromFiles(t *testing.T, files render.Files) []byte {
+func renderContext(t *testing.T, rendererType pb.RendererType) context.Context {
 	t.Helper()
-
-	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-
-	for name, content := range files {
-		if err := tw.WriteHeader(&tar.Header{
-			Name:     name,
-			Size:     int64(len(content)),
-			Typeflag: tar.TypeReg,
-		}); err != nil {
-			t.Fatalf("writing tar header for %s: %v", name, err)
-		}
-
-		if _, err := tw.Write(content); err != nil {
-			t.Fatalf("writing tar content for %s: %v", name, err)
-		}
-	}
-
-	if err := tw.Close(); err != nil {
-		t.Fatalf("closing tar: %v", err)
-	}
-
-	return buf.Bytes()
-}
-
-func successRender(_ render.Files) ([]byte, error) {
-	return []byte("kind: Deployment"), nil
-}
-
-func errorRender(_ render.Files) ([]byte, error) {
-	return nil, fmt.Errorf("render failed")
-}
-
-func successForward(_ context.Context, _ []byte) error {
-	return nil
-}
-
-func errorForward(_ context.Context, _ []byte) error {
-	return fmt.Errorf("forward failed")
+	md := metadata.Pairs("renderer-type", rendererType.String())
+	return metadata.NewIncomingContext(t.Context(), md)
 }
 
 func TestRender(t *testing.T) {
-	data := tarFromFiles(t, render.Files{"app.yaml": []byte("kind: Deployment")})
-
 	var forwarded []byte
-	captureFn := func(_ context.Context, manifest []byte) error {
-		forwarded = manifest
-		return nil
-	}
 
-	svc := serve.New(slog.Default(), successRender, captureFn)
+	svc := serve.New(
+		slog.Default(),
+		func(_ pb.RendererType, _ io.Reader) ([]byte, error) {
+			return []byte("kind: Deployment"), nil
+		},
+		func(_ context.Context, manifest []byte) error {
+			forwarded = manifest
+			return nil
+		},
+	)
+
 	stream := &tests.MockRenderServer{
-		Requests: []*pb.RenderRequest{{Data: data}},
-		Ctx:      t.Context(),
+		Requests: []*pb.RenderRequest{{Data: []byte("tar data")}},
+		Ctx:      renderContext(t, pb.RendererType_RENDERER_TYPE_PLAIN),
 	}
 
 	if err := svc.Render(stream); err != nil {
@@ -86,25 +52,30 @@ func TestRender(t *testing.T) {
 	}
 }
 
-func TestRender_ExtractError(t *testing.T) {
-	svc := serve.New(slog.Default(), successRender, successForward)
+func TestRender_MissingMetadata(t *testing.T) {
+	svc := serve.New(slog.Default(), nil, nil)
+
 	stream := &tests.MockRenderServer{
-		Requests: []*pb.RenderRequest{{Data: []byte("not a tar")}},
-		Ctx:      t.Context(),
+		Ctx: t.Context(),
 	}
 
 	if err := svc.Render(stream); err == nil {
-		t.Fatal("expected error for corrupt tar")
+		t.Fatal("expected error when metadata is missing")
 	}
 }
 
 func TestRender_RenderError(t *testing.T) {
-	data := tarFromFiles(t, render.Files{"app.yaml": []byte("kind: Pod")})
+	svc := serve.New(
+		slog.Default(),
+		func(_ pb.RendererType, _ io.Reader) ([]byte, error) {
+			return nil, fmt.Errorf("render failed")
+		},
+		nil,
+	)
 
-	svc := serve.New(slog.Default(), errorRender, successForward)
 	stream := &tests.MockRenderServer{
-		Requests: []*pb.RenderRequest{{Data: data}},
-		Ctx:      t.Context(),
+		Requests: []*pb.RenderRequest{{Data: []byte("tar data")}},
+		Ctx:      renderContext(t, pb.RendererType_RENDERER_TYPE_PLAIN),
 	}
 
 	if err := svc.Render(stream); err == nil {
@@ -113,12 +84,19 @@ func TestRender_RenderError(t *testing.T) {
 }
 
 func TestRender_ForwardError(t *testing.T) {
-	data := tarFromFiles(t, render.Files{"app.yaml": []byte("kind: Pod")})
+	svc := serve.New(
+		slog.Default(),
+		func(_ pb.RendererType, _ io.Reader) ([]byte, error) {
+			return []byte("manifest"), nil
+		},
+		func(_ context.Context, _ []byte) error {
+			return fmt.Errorf("forward failed")
+		},
+	)
 
-	svc := serve.New(slog.Default(), successRender, errorForward)
 	stream := &tests.MockRenderServer{
-		Requests: []*pb.RenderRequest{{Data: data}},
-		Ctx:      t.Context(),
+		Requests: []*pb.RenderRequest{{Data: []byte("tar data")}},
+		Ctx:      renderContext(t, pb.RendererType_RENDERER_TYPE_PLAIN),
 	}
 
 	if err := svc.Render(stream); err == nil {
@@ -126,26 +104,19 @@ func TestRender_ForwardError(t *testing.T) {
 	}
 }
 
-func TestRender_ReadError(t *testing.T) {
-	svc := serve.New(slog.Default(), successRender, successForward)
-	stream := &tests.MockRenderServer{
-		RecvErr: fmt.Errorf("recv failed"),
-		Ctx:     t.Context(),
-	}
-
-	if err := svc.Render(stream); err == nil {
-		t.Fatal("expected error when read fails")
-	}
-}
-
 func TestRender_SendError(t *testing.T) {
-	data := tarFromFiles(t, render.Files{"app.yaml": []byte("kind: Pod")})
+	svc := serve.New(
+		slog.Default(),
+		func(_ pb.RendererType, _ io.Reader) ([]byte, error) {
+			return []byte("manifest"), nil
+		},
+		func(_ context.Context, _ []byte) error { return nil },
+	)
 
-	svc := serve.New(slog.Default(), successRender, successForward)
 	stream := &tests.MockRenderServer{
-		Requests: []*pb.RenderRequest{{Data: data}},
+		Requests: []*pb.RenderRequest{{Data: []byte("tar data")}},
 		SendErr:  fmt.Errorf("send failed"),
-		Ctx:      t.Context(),
+		Ctx:      renderContext(t, pb.RendererType_RENDERER_TYPE_PLAIN),
 	}
 
 	if err := svc.Render(stream); err == nil {

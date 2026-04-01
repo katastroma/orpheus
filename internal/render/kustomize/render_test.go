@@ -4,21 +4,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/katastroma/orpheus/internal/render"
 	"github.com/katastroma/orpheus/internal/render/kustomize"
+	"github.com/katastroma/orpheus/internal/tests"
 )
 
 func TestRender(t *testing.T) {
-	files := render.Files{
+	r := tests.TarReader(t, map[string][]byte{
 		"kustomization.yaml": []byte("resources:\n- deployment.yaml\n"),
-		"deployment.yaml": []byte(`apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: test
-`),
-	}
+		"deployment.yaml": []byte("apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: test\n"),
+	})
 
-	out, err := kustomize.Render(files)
+	out, err := kustomize.Render(r)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -29,21 +25,13 @@ metadata:
 }
 
 func TestRender_MultipleResources(t *testing.T) {
-	files := render.Files{
+	r := tests.TarReader(t, map[string][]byte{
 		"kustomization.yaml": []byte("resources:\n- deployment.yaml\n- service.yaml\n"),
-		"deployment.yaml": []byte(`apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: test
-`),
-		"service.yaml": []byte(`apiVersion: v1
-kind: Service
-metadata:
-  name: test
-`),
-	}
+		"deployment.yaml":    []byte("apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: test\n"),
+		"service.yaml":       []byte("apiVersion: v1\nkind: Service\nmetadata:\n  name: test\n"),
+	})
 
-	out, err := kustomize.Render(files)
+	out, err := kustomize.Render(r)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -57,31 +45,27 @@ metadata:
 }
 
 func TestRender_InvalidKustomization(t *testing.T) {
-	files := render.Files{
+	r := tests.TarReader(t, map[string][]byte{
 		"kustomization.yaml": []byte("not valid kustomization"),
-	}
+	})
 
-	if _, err := kustomize.Render(files); err == nil {
+	if _, err := kustomize.Render(r); err == nil {
 		t.Fatal("expected error for invalid kustomization")
 	}
 }
 
-func TestRender_MissingResource(t *testing.T) {
-	files := render.Files{
-		"kustomization.yaml": []byte("resources:\n- nonexistent.yaml\n"),
-	}
-
-	if _, err := kustomize.Render(files); err == nil {
-		t.Fatal("expected error for missing resource reference")
+func TestRender_CorruptArchive(t *testing.T) {
+	if _, err := kustomize.Render(strings.NewReader("not a tar")); err == nil {
+		t.Fatal("expected error for corrupt archive")
 	}
 }
 
-func TestRender_InvalidFilePath(t *testing.T) {
-	files := render.Files{
-		"../invalid_file": []byte(""),
-	}
+func TestRender_MissingResource(t *testing.T) {
+	r := tests.TarReader(t, map[string][]byte{
+		"kustomization.yaml": []byte("resources:\n- nonexistent.yaml\n"),
+	})
 
-	if _, err := kustomize.Render(files); err == nil {
-		t.Fatal("expected error for invalid file path")
+	if _, err := kustomize.Render(r); err == nil {
+		t.Fatal("expected error for missing resource reference")
 	}
 }

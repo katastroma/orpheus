@@ -2,18 +2,21 @@ package render_test
 
 import (
 	"fmt"
+	"io"
+	"strings"
 	"testing"
 
+	"github.com/katastroma/keleustes"
 	"github.com/katastroma/orpheus/internal/render"
 )
 
 func TestRouter_Render(t *testing.T) {
 	var r render.Router
-	r.Register("test", func(_ render.Files) bool { return true }, func(_ render.Files) ([]byte, error) {
+	r.Register(keleustes.RendererType_RENDERER_TYPE_PLAIN, func(_ io.Reader) ([]byte, error) {
 		return []byte("manifest"), nil
 	})
 
-	out, err := r.Render(render.Files{})
+	out, err := r.Render(keleustes.RendererType_RENDERER_TYPE_PLAIN, strings.NewReader(""))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -23,70 +26,32 @@ func TestRouter_Render(t *testing.T) {
 	}
 }
 
-func TestRouter_Render_Priority(t *testing.T) {
-	var r render.Router
-	r.Register("first", func(_ render.Files) bool { return true }, func(_ render.Files) ([]byte, error) {
-		return []byte("first"), nil
-	})
-	r.Register("second", func(_ render.Files) bool { return true }, func(_ render.Files) ([]byte, error) {
-		return []byte("second"), nil
-	})
-
-	out, err := r.Render(render.Files{})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if string(out) != "first" {
-		t.Errorf("expected first registered backend to win, got %q", string(out))
-	}
-}
-
-func TestRouter_Render_SkipsNonMatching(t *testing.T) {
-	var r render.Router
-	r.Register("no", func(_ render.Files) bool { return false }, func(_ render.Files) ([]byte, error) {
-		return []byte("wrong"), nil
-	})
-	r.Register("yes", func(_ render.Files) bool { return true }, func(_ render.Files) ([]byte, error) {
-		return []byte("right"), nil
-	})
-
-	out, err := r.Render(render.Files{})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if string(out) != "right" {
-		t.Errorf("expected matching backend, got %q", string(out))
-	}
-}
-
 func TestRouter_Render_NoMatch(t *testing.T) {
 	var r render.Router
-	r.Register("no", func(_ render.Files) bool { return false }, func(_ render.Files) ([]byte, error) {
+	r.Register(keleustes.RendererType_RENDERER_TYPE_PLAIN, func(_ io.Reader) ([]byte, error) {
 		return nil, nil
 	})
 
-	if _, err := r.Render(render.Files{}); err == nil {
-		t.Fatal("expected error when no backend matches")
+	if _, err := r.Render(keleustes.RendererType_RENDERER_TYPE_HELM, strings.NewReader("")); err == nil {
+		t.Fatal("expected error when no backend registered for type")
 	}
 }
 
 func TestRouter_Render_Empty(t *testing.T) {
 	var r render.Router
 
-	if _, err := r.Render(render.Files{}); err == nil {
+	if _, err := r.Render(keleustes.RendererType_RENDERER_TYPE_PLAIN, strings.NewReader("")); err == nil {
 		t.Fatal("expected error with no registered backends")
 	}
 }
 
 func TestRouter_Render_BackendError(t *testing.T) {
 	var r render.Router
-	r.Register("fail", func(_ render.Files) bool { return true }, func(_ render.Files) ([]byte, error) {
+	r.Register(keleustes.RendererType_RENDERER_TYPE_HELM, func(_ io.Reader) ([]byte, error) {
 		return nil, fmt.Errorf("render failed")
 	})
 
-	if _, err := r.Render(render.Files{}); err == nil {
+	if _, err := r.Render(keleustes.RendererType_RENDERER_TYPE_HELM, strings.NewReader("")); err == nil {
 		t.Fatal("expected error from backend")
 	}
 }
