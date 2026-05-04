@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.3.0 - 2026-05-04
+#### Features
+- use bidi streaming - (45dc9d2) - Nathan Blair
+#### Documentation
+- flesh out docs - (95491d5) - Nathan Blair
+
+- - -
+
 ## 0.2.5 - 2026-04-01
 #### Bug Fixes
 - decouple incoming signal from processing and forwarding - (16bfaad) - Nathan Blair
