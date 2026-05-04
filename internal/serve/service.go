@@ -13,12 +13,13 @@ import (
 // Service implements the keleustes RendererServiceServer.
 type Service struct {
 	pb.UnimplementedRendererServiceServer
-	log      *slog.Logger
-	router   *render.Router
-	streamFn orderer.StreamFunc
+	log       *slog.Logger
+	router    *render.Router
+	streamFn  orderer.StreamFunc
+	chunkSize int
 }
 
-// New creates a Service with the given logger, router, and stream function.
-func New(log *slog.Logger, router *render.Router, streamFn orderer.StreamFunc) *Service {
-	return &Service{log: log, router: router, streamFn: streamFn}
+// New creates a Service with the given logger, router, stream function, and chunk size.
+func New(log *slog.Logger, router *render.Router, streamFn orderer.StreamFunc, chunkSize int) *Service {
+	return &Service{log: log, router: router, streamFn: streamFn, chunkSize: chunkSize}
 }

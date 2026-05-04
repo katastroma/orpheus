@@ -59,8 +59,14 @@ func main() {
 	router.Register(pb.RendererType_RENDERER_TYPE_KUSTOMIZE, kustomize.New())
 	router.Register(pb.RendererType_RENDERER_TYPE_PLAIN, plain.New())
 
+	chunkSize, err := config.IntEnv("CHUNK_SIZE", 32*1024)
+	if err != nil {
+		log.Error(err.Error())
+		os.Exit(1)
+	}
+
 	streamFn := orderer.NewStreamFunc(log, ordererConn)
-	service := serve.New(log, &router, streamFn)
+	service := serve.New(log, &router, streamFn, chunkSize)
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", http_health.New(log))

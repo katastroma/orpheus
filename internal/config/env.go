@@ -4,6 +4,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 )
 
 // RequireEnv returns the value of the given environment variable or an error
@@ -24,4 +25,18 @@ func StringEnv(key, fallback string) string {
 		return fallback
 	}
 	return val
+}
+
+// IntEnv returns the integer value of the given environment variable, or the
+// fallback if not set. Returns an error if the value is not a valid integer.
+func IntEnv(key string, fallback int) (int, error) {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return fallback, nil
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("%s must be an integer: %w", key, err)
+	}
+	return v, nil
 }

@@ -44,14 +44,57 @@ func (s *Service) Render(stream pb.RendererService_RenderServer) error {
 	}
 	log.DebugContext(ctx, "source content received")
 
-	log.DebugContext(ctx, "responding to client")
 	if err = stream.SendAndClose(&pb.RenderResponse{}); err != nil {
 		fail(ctx, log, "sending response failed", err)
 		return fmt.Errorf("sending response: %w", err)
 	}
-	log.DebugContext(ctx, "responded to client")
 
 	go renderAndForward(ctx, log, backend, s.streamFn)
+
+	return nil
+}
+
+// RenderStream receives a tar archive over the bidi stream, renders it,
+// and streams the resulting manifest back in chunks.
+func (s *Service) RenderStream(stream pb.RendererService_RenderStreamServer) error {
+	ctx := stream.Context()
+	s.log.InfoContext(ctx, "render stream requested")
+
+	rendererType, err := readRendererType(ctx)
+	if err != nil {
+		fail(ctx, s.log, "reading renderer type failed", err)
+		return fmt.Errorf("reading renderer type: %w", err)
+	}
+	log := s.log.With("renderer", rendererType.String())
+
+	backend, err := s.router.Lookup(rendererType)
+	if err != nil {
+		fail(ctx, log, "backend lookup failed", err)
+		return fmt.Errorf("backend lookup: %w", err)
+	}
+
+	if err = backend.Receive(&renderStreamReader{stream: stream}); err != nil {
+		fail(ctx, log, "receiving failed", err)
+		return fmt.Errorf("receiving: %w", err)
+	}
+
+	manifest, err := backend.Render()
+	if err != nil {
+		fail(ctx, log, "rendering failed", err)
+		return fmt.Errorf("rendering: %w", err)
+	}
+
+	for len(manifest) > 0 {
+		n := s.chunkSize
+		if n > len(manifest) {
+			n = len(manifest)
+		}
+		if err = stream.Send(&pb.RenderStreamResponse{Data: manifest[:n]}); err != nil {
+			fail(ctx, log, "sending chunk failed", err)
+			return fmt.Errorf("sending chunk: %w", err)
+		}
+		manifest = manifest[n:]
+	}
 
 	return nil
 }

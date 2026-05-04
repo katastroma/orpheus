@@ -23,7 +23,7 @@ func TestSend_OpenError(t *testing.T) {
 }
 
 func TestSend_SendError(t *testing.T) {
-	cs := &tests.MockClientStream{SendMsgErr: fmt.Errorf("send failed")}
+	cs := &tests.MockClientStream{SendMsgErr: fmt.Errorf("send failed"), Ctx: t.Context()}
 	conn := &tests.MockClientConn{
 		NewStreamFn: func() (grpc.ClientStream, error) { return cs, nil },
 	}
@@ -34,12 +34,12 @@ func TestSend_SendError(t *testing.T) {
 }
 
 func TestSend_CloseAndRecvError(t *testing.T) {
-	cs := &tests.MockClientStream{RecvMsgErr: fmt.Errorf("orderer failed")}
+	cs := &tests.MockClientStream{RecvMsgErr: fmt.Errorf("server error"), Ctx: t.Context()}
 	conn := &tests.MockClientConn{
 		NewStreamFn: func() (grpc.ClientStream, error) { return cs, nil },
 	}
 
 	if err := send(t.Context(), slog.Default(), nil, conn); err == nil {
-		t.Fatal("expected error when orderer fails")
+		t.Fatal("expected error when CloseAndRecv fails")
 	}
 }

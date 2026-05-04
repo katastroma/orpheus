@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewStreamFunc(t *testing.T) {
-	cs := &tests.MockClientStream{}
+	cs := &tests.MockClientStream{Ctx: t.Context()}
 	conn := &tests.MockClientConn{
 		NewStreamFn: func() (grpc.ClientStream, error) { return cs, nil },
 	}

@@ -16,13 +16,13 @@ func send(ctx context.Context, log *slog.Logger, manifest []byte, conn grpc.Clie
 		return fmt.Errorf("opening order stream: %w", err)
 	}
 
-	if err = stream.Send(&pb.OrderRequest{Manifest: manifest}); err != nil {
+	if err = stream.Send(&pb.OrderRequest{Data: manifest}); err != nil {
 		return fmt.Errorf("sending manifest to orderer: %w", err)
 	}
 
 	if _, err = stream.CloseAndRecv(); err != nil {
-		log.ErrorContext(ctx, "orderer failed", "error", err)
-		return fmt.Errorf("orderer: %w", err)
+		log.ErrorContext(ctx, "closing orderer stream failed", "error", err)
+		return fmt.Errorf("closing orderer stream: %w", err)
 	}
 
 	return nil
